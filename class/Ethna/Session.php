@@ -1,74 +1,146 @@
 <?php
 namespace Ethna;
-/**
- * Ethna_Session.php
- *
- * @author Masaki Fujimoto <fujimoto@php.net>
- * @license http://www.opensource.org/licenses/bsd-license.php The BSD License
- * @package Ethna
- * @version $Id$
- */
 
 /**
- * セッションクラス
+ *  Session
  *
- * @author Masaki Fujimoto <fujimoto@php.net>
- * @access public
- * @package Ethna
+ *  @author   Junya Hayashi <junya.hayashi@gree.net>
  */
 class Session
 {
-  public function __construct()
-  {
-    session_start();
-  }
+    protected $is_alive = false;
+
     /**
-     * セッションを破棄する
-     *
-     * @access public
-     * @return bool true:正常終了 false:エラー
+     *  get session name
      */
-    public function destroy()
+    public function getSessionName()
     {
-       session_destroy();
+        return session_name();
     }
 
     /**
-     * セッション値へのアクセサ(R)
-     *
-     * @access public
-     * @param  string $name キー
-     * @return mixed  取得した値(null:セッションが開始されていない)
+     *  get session id
+     *  Note: session_id is still available even if you close the session.
      */
-    public function get($name)
+    public function getSessionId()
     {
-        if (isset($_SESSION[$name])) {
-          return $_SESSION[$name];
+        return session_id();
+    }
+
+    /**
+     *  start session
+     */
+    public function start()
+    {
+        if (! $this->isAlive()) {
+            session_start();
+            $this->is_alive = true;
         }
     }
 
     /**
-     * セッション値へのアクセサ(W)
-     *
-     * @access public
-     * @param  string $name  キー
-     * @param  string $value 値
-     * @return bool   true:正常終了 false:エラー(セッションが開始されていない)
+     *  write close session
+     *  write data and send cookie (if we use cookie for session) to client
      */
-    public function set($name, $value)
+    public function writeClose()
     {
-        $_SESSION[$name] = $value;
+        if ($this->isAlive()) {
+            session_write_close();
+            $this->is_alive = false;
+        }
     }
 
     /**
-     * セッションの値を破棄する
-     *
-     * @access public
-     * @param  string $name キー
-     * @return bool   true:正常終了 false:エラー(セッションが開始されていない)
+     *  regenerate id
      */
-    public function remove($name)
+    public function regenerateId()
     {
-        unset($_SESSION[$name]);
+        if ($this->isAlive()) {
+            session_regenerate_id(true);
+        }
+    }
+
+    /**
+     *  restore session
+     */
+    public function restore()
+    {
+        if (! empty($_COOKIE[$this->getSessionName()])) {
+            $this->start();
+            $this->regenerateId();
+        }
+    }
+
+    /**
+     *  destroy session including global variable and cookie
+     *  we can destroy the session only when it is alive.
+     */
+    public function destroy()
+    {
+        if ($this->isAlive()) {
+            $this->clearGlobalSessionVariable();
+            $this->removeCookie();
+            session_destroy();
+            $this->is_alive = false;
+        }
+    }
+
+    /**
+     *  isAlive: session is started and not closed/destroyed
+     */
+    public function isAlive()
+    {
+        return $this->is_alive;
+    }
+
+    /**
+     *  get value from session
+     */
+    public function get($key)
+    {
+        return isset($_SESSION[$key]) ? $_SESSION[$key] : null;
+    }
+
+    /**
+     *  set value to session
+     */
+    public function set($key, $value)
+    {
+        $_SESSION[$key] = $value;
+    }
+
+    /**
+     *  remove value from session
+     */
+    public function remove($key)
+    {
+        unset($_SESSION[$key]);
+    }
+
+    /**
+     *  clear $_SESSION variable
+     */
+    protected function clearGlobalSessionVariable()
+    {
+        $_SESSION = array();
+    }
+
+    /**
+     *  remove cookie
+     */
+    protected function removeCookie()
+    {
+        if (ini_get("session.use_cookies")) {
+            $params = session_get_cookie_params();
+            setcookie(
+                $this->getSessionName(),
+                '',
+                time() - 42000,
+                $params["path"],
+                $params["domain"],
+                $params["secure"],
+                $params["httponly"]
+            );
+        }
     }
 }
