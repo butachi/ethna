@@ -161,6 +161,7 @@ abstract class Controller
         $action = new $action_class_name($this);
         $form = new $form_class_name();
         $form->setFormVars();
+        DIContainerFactory::getContainer()->set('action', $action);
         DIContainerFactory::getContainer()->set('form', $form);
 
         // Restore Session
