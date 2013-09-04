@@ -157,10 +157,14 @@ abstract class Controller
         }
 
         // オブジェクト生成
+        $session = DIContainerFactory::getContainer()->get('session');
         $action = new $action_class_name($this);
         $form = new $form_class_name();
         $form->setFormVars();
         DIContainerFactory::getContainer()->set('form', $form);
+
+        // Restore Session
+        $session->restore();
 
         // アクションの実行
         $result = $action->authenticate();
