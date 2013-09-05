@@ -147,35 +147,40 @@ abstract class Controller
      */
     private function _trigger($action_name)
     {
-        // アクション定義の取得
-        $action_class_name = $this->_getActionName();
-        $form_class_name = $this->getActionFormName();
+        // Restore Session
+        $session = DIContainerFactory::getContainer()->get('session');
+        $session->restore();
 
-        // アクション実行前フィルタ
+        // Pre action filters
         foreach ($this->filter_chain as $filter) {
             $filter->preActionFilter($this->action_name);
         }
 
-        // オブジェクト生成
-        $session = DIContainerFactory::getContainer()->get('session');
+        // prepare action
+        $action_class_name = $this->_getActionName();
         $action = new $action_class_name($this);
+        DIContainerFactory::getContainer()->set('action', $action);
+
+        // prepare form
+        $form_class_name = $this->getActionFormName();
         $form = new $form_class_name();
         $form->setFormVars();
-        DIContainerFactory::getContainer()->set('action', $action);
         DIContainerFactory::getContainer()->set('form', $form);
 
-        // Restore Session
-        $session->restore();
-
-        // アクションの実行
+        // authenticate
         $result = $action->authenticate();
         if ($result === false) {
             throw new \Ethna\Exception('authentication is failed.');
+        } elseif (isset($result)) {
+            $forward_name = $result;
         }
 
-        $forward_name = $action->perform();
+        // execute action
+        if (! isset($forward_name)) {
+            $forward_name = $action->perform();
+        }
 
-        // アクション実行後フィルタ
+        // Post action filters
         for ($i = count($this->filter_chain) - 1; $i >= 0; $i--) {
             $this->filter_chain[$i]->postActionFilter($action_name, $forward_name);
         }
