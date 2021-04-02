@@ -59,7 +59,9 @@ class Ethna_Handle
      */
     public function getHandler($id)
     {
-        $name = preg_replace('/\-(.)/e', "strtoupper('\$1')", ucfirst($id));
+        $name = preg_replace_callback('/\-(.)/', function ($mathches) {
+            return strtoupper($mathches[1]);
+        }, ucfirst($id));
         $handler = $this->plugin->getPlugin('Handle', $name);
         if (Ethna::isError($handler)) {
             return $handler;
